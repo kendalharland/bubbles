@@ -304,7 +304,7 @@ func New() Model {
 		viewport: &vp,
 	}
 
-	m.SetHeight(defaultHeight)
+	m.setHeight(defaultHeight)
 	m.SetWidth(defaultWidth)
 
 	return m
@@ -941,15 +941,10 @@ func (m Model) Height() int {
 	return m.height
 }
 
-// SetHeight sets the height of the textarea.
-func (m *Model) SetHeight(h int) {
-	if m.MaxHeight > 0 {
-		m.height = clamp(h, minHeight, m.MaxHeight)
-		m.viewport.Height = clamp(h, minHeight, m.MaxHeight)
-	} else {
-		m.height = max(h, minHeight)
-		m.viewport.Height = max(h, minHeight)
-	}
+// setHeight sets the height of the textarea.
+func (m *Model) setHeight(h int) {
+	m.height = max(h, minHeight)
+	m.viewport.Height = max(h, minHeight)
 }
 
 // Update is the Bubble Tea update loop.
@@ -1101,9 +1096,12 @@ func (m Model) View() string {
 		lineInfo         = m.LineInfo()
 	)
 
+	visibleLineCount := 0
+
 	displayLine := 0
 	for l, line := range m.value {
 		wrappedLines := m.memoizedWrap(line, m.width)
+		visibleLineCount += len(wrappedLines)
 
 		if m.row == l {
 			style = m.style.computedCursorLine()
@@ -1176,22 +1174,8 @@ func (m Model) View() string {
 		}
 	}
 
-	// Always show at least `m.Height` lines at all times.
-	// To do this we can simply pad out a few extra new lines in the view.
-	for i := 0; i < m.height; i++ {
-		prompt := m.getPromptString(displayLine)
-		prompt = m.style.computedPrompt().Render(prompt)
-		s.WriteString(prompt)
-		displayLine++
-
-		// Write end of buffer content
-		leftGutter := string(m.EndOfBufferCharacter)
-		rightGapWidth := m.Width() - lipgloss.Width(leftGutter) + widestLineNumber
-		rightGap := strings.Repeat(" ", max(0, rightGapWidth))
-		s.WriteString(m.style.computedEndOfBuffer().Render(leftGutter + rightGap))
-		s.WriteRune('\n')
-	}
-
+	// TODO: Why does this clip the top line if we omit the +1?
+	m.setHeight(visibleLineCount + 1)
 	m.viewport.SetContent(s.String())
 	return m.style.Base.Render(m.viewport.View())
 }
