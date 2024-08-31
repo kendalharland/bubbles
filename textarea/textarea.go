@@ -954,11 +954,6 @@ func (m *Model) SetHeight(h int) {
 
 // Update is the Bubble Tea update loop.
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	if !m.focus {
-		m.Cursor.Blur()
-		return m, nil
-	}
-
 	// Used to determine if the cursor should blink.
 	oldRow, oldCol := m.cursorLineNumber(), m.col
 
@@ -1074,13 +1069,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	m.viewport = &vp
 	cmds = append(cmds, cmd)
 
-	newRow, newCol := m.cursorLineNumber(), m.col
-	m.Cursor, cmd = m.Cursor.Update(msg)
-	if (newRow != oldRow || newCol != oldCol) && m.Cursor.Mode() == cursor.CursorBlink {
-		m.Cursor.Blink = false
-		cmd = m.Cursor.BlinkCmd()
+	if m.focus {
+		newRow, newCol := m.cursorLineNumber(), m.col
+		m.Cursor, cmd = m.Cursor.Update(msg)
+		if (newRow != oldRow || newCol != oldCol) && m.Cursor.Mode() == cursor.CursorBlink {
+			m.Cursor.Blink = false
+			cmd = m.Cursor.BlinkCmd()
+		}
+		cmds = append(cmds, cmd)
+	} else {
+		m.Cursor.Blur()
 	}
-	cmds = append(cmds, cmd)
 
 	m.repositionView()
 
